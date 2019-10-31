@@ -1,0 +1,203 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <script src="js/three.min.js"></script>
+    <script src="js/OrbitControls.js"></script>
+    <script src="js/ColladaLoader.js"></script>
+    <body>
+      <canvas id="myCanvas"></canvas>
+      <a href="index.html">Crepe</a>
+    </body>
+    <script>
+      // ページの読み込みを待つ
+      window.addEventListener('load', init);
+      function init() {
+        // サイズを指定
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        let rot = 0;
+        
+        // レンダラーを作成
+        const renderer = new THREE.WebGLRenderer({
+          canvas: document.querySelector('#myCanvas')
+        });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(width, height);
+        renderer.shadowMap.enabled = true;
+        // シーンを作成
+        const scene = new THREE.Scene();
+        // カメラを作成
+        const camera = new THREE.PerspectiveCamera(
+          20,
+          width / height,
+          0.1,
+          10000
+        );
+
+        // リサイズ
+        onResize();
+        // リサイズイベント発生時に実行
+        window.addEventListener('resize', onResize);
+
+        function onResize() {
+          // サイズを取得
+          const width = window.innerWidth;
+          const height = window.innerHeight*0.7;
+
+          // レンダラーのサイズを調整する
+          renderer.setPixelRatio(window.devicePixelRatio);
+          renderer.setSize(width, height);
+
+          // カメラのアスペクト比を正す
+          camera.aspect = width / height;
+          camera.updateProjectionMatrix();
+        }
+        // カメラの初期座標を設定
+        camera.position.set(0, 60, 0);
+        // カメラコントローラーを作成
+        const controls = new THREE.OrbitControls(camera);
+
+        // 半球光源を作成
+        // new THREE.HemisphereLight(空の色, 地の色, 光の強さ)
+        const hemilight = new THREE.HemisphereLight(0x888888, 0xff5000, 0.8);
+        scene.add(hemilight);
+
+        // 環境光を追加
+        const ambientLight = new THREE.AmbientLight(0x402020);
+        scene.add(ambientLight);
+        
+        // 照明を作成
+        const light = new THREE.SpotLight(0xFFFFFF, 2, 100, Math.PI / 4, 1);
+        
+        // ライトに影を有効にする
+        light.position.set(-10, 10, -10),
+        light.castShadow = true;
+        light.shadow.mapSize.width = 1024;
+        light.shadow.mapSize.height = 1024;
+        scene.add(light);
+
+
+        cubeTextureLoader = new THREE.CubeTextureLoader(),
+        textureCube = cubeTextureLoader.load( [
+        'models/posx.jpg',
+        'models/negx.jpg',
+        'models/posy.jpg',
+        'models/negy.jpg',
+        'models/posz.jpg',
+        'models/negz.jpg'
+         ] );
+        shader = THREE.ShaderLib[ "cube" ];
+        shader.uniforms[ "tCube" ].value = textureCube;
+
+        skyboxMaterial = new THREE.ShaderMaterial( {
+        fragmentShader: shader.fragmentShader,
+        vertexShader: shader.vertexShader,
+        uniforms: shader.uniforms,
+        depthWrite: false,
+        side: THREE.BackSide
+        } );
+        skybox = new THREE.Mesh( new THREE.BoxGeometry( 100, 100, 100 ), skyboxMaterial );
+        scene.add( skybox );
+        
+        //床を作成
+        const meshFloor = new THREE.Mesh( 
+          new THREE.CylinderGeometry( 9, 10, 2, 48 ),
+        new THREE.MeshStandardMaterial({ color: 0x303030, roughness: 0.2, envMap: textureCube, envMapIntensity: 3, metalness: 0.0,})
+        );
+        meshFloor.position.set(0, -1.7, 0),
+        meshFloor.receiveShadow = true;
+        scene.add(meshFloor);
+
+        // 球を作成
+        const geometry = new THREE.SphereGeometry( -100, 8, 8 );
+        const material = new THREE.MeshBasicMaterial( {color: 0xe5e5e5} );
+        const sphere = new THREE.Mesh( geometry, material );
+        scene.add( sphere );
+
+
+        //テクスチャ読み込み
+        var loader = new THREE.TextureLoader();
+        loader.setCrossOrigin( 'anonymous' );
+        var textureBase_Color = loader.load('models/crepe.png');
+        var textureNormal = loader.load('models/crepe_n.png');
+        var textureRoughness = loader.load('models/crepe_r.png');
+
+        // Collada読み込み
+        var loader = new THREE.ColladaLoader();
+        loader.options.convertUpAxis = true;
+        loader.load( 'models/crepe.dae',function colladaReady( collada ) {
+
+        model = collada.scene;
+        model_geometry = collada.scene.children[ 0 ].geometry;
+        model_material = collada.scene.children[ 0 ].material;
+        collada.scene.children[ 0 ].material = new THREE.MeshStandardMaterial( {
+ 
+        color: 0xffffff,
+        wireframe: false,
+        map: textureBase_Color,
+        normalMap: textureNormal,
+        roughnessMap: textureRoughness,
+        metalness: 0.0,
+        emissiveMap: textureBase_Color,
+        envMap: textureCube,
+        envMapIntensity: 2,
+
+        } );
+        model.scale.set(10.0, 10.0, 10.0);
+        model.position.set(-1, 0, 0.5),
+        model.updateMatrix();
+        scene.add(model);
+        daemesh = collada.scene.children[0];
+        daemesh.castShadow = true;
+        daemesh.receiveShadow = true;
+        });
+        
+        
+        tick();
+        // 毎フレーム時に実行されるループイベントです
+        function tick() {
+          rot += 0.2; // 毎フレーム角度を0.5度ずつ足していく
+          // ラジアンに変換する
+          const radian = (rot * Math.PI) / 180;
+          // 角度に応じてカメラの位置を設定
+          camera.position.x = 10 * Math.sin(radian);
+          camera.position.z = 10 * Math.cos(radian);
+          // 原点方向を見つめる
+          camera.lookAt(new THREE.Vector3(0, 0, 0));
+          // レンダリング
+          renderer.render(scene, camera);
+          requestAnimationFrame(tick);
+        }
+      }
+      
+    </script>
+  </head>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    a {
+      border-bottom: solid 3px skyblue;
+      position: relative;
+      font-size: 600%;
+      font-family: 'Arial', sans-serif;
+      font-weight: 600;
+      color: #303030;
+      text-decoration: none;
+      padding-right: 10%;
+      float: right;
+    }
+    
+    a:after {
+      position: absolute;
+      content: " ";
+      display: block;
+      border-bottom: solid 3px #ffc778;
+      bottom: -3px;
+      width: 30%;
+    }
+  </style>
+  
+</html>

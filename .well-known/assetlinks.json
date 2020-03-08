@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "kame404.github.io.nixie",
+    "sha256_cert_fingerprints": [
+      "5C:A6:64:6A:B7:78:41:70:66:CA:D1:07:71:BC:66:1C:AC:8A:C7:BD:39:DA:51:F4:A8:BC:5E:51:BA:55:92:74"
+    ]
+  }
+}]
